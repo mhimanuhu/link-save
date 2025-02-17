@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Search, Share2, Tag } from 'lucide-react';
+import { Plus, Search, Share2, Tag, ExternalLink } from 'lucide-react';
 import { useLinksStore } from '../store/links-store';
 import { toast } from 'react-hot-toast';
 import LoadingDots from '../components/LoadingDots';
@@ -13,7 +13,7 @@ export default function Dashboard() {
     url: '',
     tags: [] as string[],
   });
-  const [newTag, setNewTag] = React.useState('');
+  const [tagInput, setTagInput] = React.useState('');
   const [showShareModal, setShowShareModal] = React.useState(false);
   const [selectedLinkId, setSelectedLinkId] = React.useState<string | null>(null);
   const [recipientEmail, setRecipientEmail] = React.useState('');
@@ -25,6 +25,10 @@ export default function Dashboard() {
 
   const handleAddLink = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newLink.title.trim() || !newLink.url.trim()) {
+      toast.error('Title and URL are required');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await addLink(newLink);
@@ -39,13 +43,24 @@ export default function Dashboard() {
     }
   };
 
-  const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newTag.trim()) {
-      setNewLink({
-        ...newLink,
-        tags: [...newLink.tags, newTag.trim()],
-      });
-      setNewTag('');
+  const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTagInput(value);
+    
+    // Add tags when comma is typed
+    if (value.includes(',')) {
+      const newTags = value
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag && !newLink.tags.includes(tag));
+      
+      if (newTags.length > 0) {
+        setNewLink({
+          ...newLink,
+          tags: [...newLink.tags, ...newTags],
+        });
+      }
+      setTagInput('');
     }
   };
 
@@ -70,6 +85,7 @@ export default function Dashboard() {
   const filteredLinks = links.filter(
     (link) =>
       link.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      link.url.toLowerCase().includes(searchTerm.toLowerCase()) ||
       link.tags.some((tag) =>
         tag.toLowerCase().includes(searchTerm.toLowerCase())
       )
@@ -104,47 +120,57 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredLinks.map((link) => (
-            <div
-              key={link.id}
-              className="p-6 bg-white dark:bg-dark-100 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-medium text-lg">{link.title}</h3>
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary-600 dark:text-primary-400 hover:underline mt-1 inline-block"
-                  >
-                    {link.url}
-                  </a>
-                </div>
-                <button
-                  onClick={() => {
-                    setSelectedLinkId(link.id);
-                    setShowShareModal(true);
-                  }}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-200 text-gray-500 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
-                >
-                  <Share2 className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="mt-3 flex flex-wrap gap-2">
-                {link.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300"
-                  >
-                    <Tag className="w-3 h-3 mr-1" />
-                    {tag}
-                  </span>
-                ))}
-              </div>
+          {filteredLinks.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
+              No links found
             </div>
-          ))}
+          ) : (
+            filteredLinks.map((link) => (
+              <div
+                key={link.id}
+                className="p-6 bg-white dark:bg-dark-100 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <h3 className="font-medium text-lg truncate-text" title={link.title}>
+                      {link.title.length > 12 ? `${link.title.slice(0, 12)}...` : link.title}
+                    </h3>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1 truncate-text"
+                      title={link.url}
+                    >
+                      <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{link.url}</span>
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedLinkId(link.id);
+                      setShowShareModal(true);
+                    }}
+                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-200 text-gray-500 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400 transition-colors flex-shrink-0 ml-2"
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {link.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-300"
+                    >
+                      <Tag className="w-3 h-3 mr-1" />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -182,10 +208,9 @@ export default function Dashboard() {
                 <label className="block text-sm font-medium mb-2">Tags</label>
                 <input
                   type="text"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  onKeyDown={handleAddTag}
-                  placeholder="Press Enter to add tags"
+                  value={tagInput}
+                  onChange={handleTagInput}
+                  placeholder="Add tags separated by commas"
                 />
                 <div className="mt-3 flex flex-wrap gap-2">
                   {newLink.tags.map((tag, index) => (

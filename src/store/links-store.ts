@@ -10,16 +10,23 @@ interface Link {
   created_at: string;
 }
 
+interface SharedLink extends Link {
+  shared_by_email: string;
+}
+
 interface LinksState {
   links: Link[];
+  sharedLinks: SharedLink[];
   loading: boolean;
   fetchLinks: () => Promise<void>;
+  fetchSharedLinks: () => Promise<void>;
   addLink: (link: Omit<Link, 'id' | 'created_at' | 'user_id'>) => Promise<void>;
   shareLink: (linkId: string, recipientEmail: string) => Promise<void>;
 }
 
 export const useLinksStore = create<LinksState>((set) => ({
   links: [],
+  sharedLinks: [],
   loading: false,
   fetchLinks: async () => {
     set({ loading: true });
@@ -30,6 +37,25 @@ export const useLinksStore = create<LinksState>((set) => ({
 
     if (error) throw error;
     set({ links: data, loading: false });
+  },
+  fetchSharedLinks: async () => {
+    set({ loading: true });
+    const { data, error } = await supabase
+      .from('shared_links')
+      .select(`
+        *,
+        link:links(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const formattedLinks = data.map((shared) => ({
+      ...shared.link,
+      shared_by_email: shared.shared_by_email,
+    }));
+
+    set({ sharedLinks: formattedLinks, loading: false });
   },
   addLink: async (link) => {
     const {
@@ -59,6 +85,7 @@ export const useLinksStore = create<LinksState>((set) => ({
         link_id: linkId,
         user_id: user.id,
         recipient_email: recipientEmail,
+        shared_by_email: user.email,
       },
     ]);
     

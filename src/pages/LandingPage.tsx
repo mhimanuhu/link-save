@@ -5,8 +5,9 @@ import { toast } from 'react-hot-toast';
 import LoadingDots from '../components/LoadingDots';
 
 export default function LandingPage() {
-  const { signIn, signUp, user } = useAuthStore();
+  const { signIn, signUp, resetPassword, user } = useAuthStore();
   const [isLogin, setIsLogin] = React.useState(true);
+  const [showForgotPassword, setShowForgotPassword] = React.useState(false);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -19,7 +20,11 @@ export default function LandingPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      if (isLogin) {
+      if (showForgotPassword) {
+        await resetPassword(email);
+        toast.success('Password reset instructions sent to your email');
+        setShowForgotPassword(false);
+      } else if (isLogin) {
         await signIn(email, password);
       } else {
         await signUp(email, password);
@@ -49,10 +54,16 @@ export default function LandingPage() {
         <div className="max-w-md w-full space-y-8 animate-slide-down">
           <div className="text-center">
             <h2 className="text-3xl font-bold">
-              {isLogin ? 'Welcome back' : 'Create an account'}
+              {showForgotPassword
+                ? 'Reset Password'
+                : isLogin
+                ? 'Welcome back'
+                : 'Create an account'}
             </h2>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              {isLogin
+              {showForgotPassword
+                ? 'Enter your email to reset your password'
+                : isLogin
                 ? 'Sign in to access your links'
                 : 'Start organizing your links today'}
             </p>
@@ -73,19 +84,33 @@ export default function LandingPage() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-2">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
+              {!showForgotPassword && (
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium mb-2">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
+
+            {isLogin && !showForgotPassword && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
 
             <div>
               <button
@@ -95,22 +120,35 @@ export default function LandingPage() {
               >
                 {isSubmitting ? (
                   <LoadingDots />
+                ) : showForgotPassword ? (
+                  'Send Reset Instructions'
+                ) : isLogin ? (
+                  'Sign in'
                 ) : (
-                  isLogin ? 'Sign in' : 'Sign up'
+                  'Sign up'
                 )}
               </button>
             </div>
           </form>
 
-          <div className="text-center">
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : 'Already have an account? Sign in'}
-            </button>
+          <div className="text-center space-y-4">
+            {showForgotPassword ? (
+              <button
+                onClick={() => setShowForgotPassword(false)}
+                className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
+              >
+                Back to sign in
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
+              >
+                {isLogin
+                  ? "Don't have an account? Sign up"
+                  : 'Already have an account? Sign in'}
+              </button>
+            )}
           </div>
         </div>
       </div>
